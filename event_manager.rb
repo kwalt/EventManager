@@ -6,29 +6,28 @@ require "sunlight"
 class EventManager
 	INVALID_ZIPCODE = "00000"
   Sunlight::Base.api_key = "e179a6973728c4dd3fb1204283aaccb5"
+
   def initialize(filename)
     puts "EventManager Initialized."
     @file = CSV.open(filename, {:headers => true, :header_converters => :symbol})
   end
 
 	def print_names
+		#takes the CSV, goes line by line, which we define to be called |line|, and then
+		#prints out for each line what is under the symbols for first and last name
 		@file.each do |line|
 			#puts line[2, 2]
 			#puts line[2] + " " + line[3]
-			puts "#{line[:first_name]} #{line[:last_name]}"
 			#puts line.inspect
+			puts "#{line[:first_name]} #{line[:last_name]}"
 		end
 	end
 
 	def clean_number(original)
-		number = original.delete(".")
-		number = number.delete("-")
-		number = number.delete("(")
-		number = number.delete(")")
-		number = number.delete(" ")
+		number = original.delete("-.() ")
 
 		if number.length == 10
-		  # Do Nothing
+		  return number #I think this saves a small small amount of time here
 		elsif number.length == 11
 		  if number.start_with?("1")
 		    number = number[1..-1]
@@ -39,9 +38,9 @@ class EventManager
 		  number = "0000000000"
 		end
 
-		return number #when I didn't have this earlier, print_numbers was
-		#only printing out the few numbers that had second-round cleaning
-		#But why not just put this under if number.length == 10???
+#		return number 
+# ^this had been here, but I put it under if number.length == 10, since that
+# seems like it would save a teeny little bit of time
 	end
 
 	def print_numbers
@@ -97,10 +96,10 @@ class EventManager
 			names = legislators.collect do |leg|
 			  #first_name = leg.firstname
 			  #first_initial = first_name[0]
-			  first_initial = leg.first_name[0] #why not do it this way?
+			  first_initial = leg.firstname[0] #why not do it this way?
 			  last_name = leg.lastname
 			  party_initial = leg.party
-			  first_initial + ". " + last_name + "(" + party_initial + ")"
+			  first_initial + ". " + last_name + " (" + party_initial + ")"
 			end
 
 			puts "#{line[:last_name]}, #{line[:first_name]}, #{line[:zipcode]}, #{names.join(", ")}"
@@ -150,10 +149,23 @@ class EventManager
   def state_stats
     state_data = {}
     @file.each do |line|
-
+      state = line[:state]  # Find the State
+      if state_data[state].nil? # Does the state's bucket exist in state_data?
+        state_data[state] = 1 # If that bucket was nil then start it with this one person
+      else
+        state_data[state] = state_data[state] + 1  # If the bucket exists, add one
+      end
     end
-  end
+    	# state_data = state_data.select{|state, counter| state}.sort_by{|state, counter| -counter}
+     #  state_data.each do |state, counter|
+    	# puts"#{state}: #{counter}"
+    	ranks = state_data.sort_by{|state, counter| -counter}.collect{|state, counter| state}
+    	state_data = state_data.select{|state, counter| state}.sort_by{|state, counter| state}
 
+    	state_data.each do |state, counter|
+    		puts "#{state}\t#{counter}\t(#{ranks.index(state) + 1})"
+    	end
+  end
 
 end
 
@@ -164,7 +176,7 @@ manager = EventManager.new("./event_manager/event_attendees_clean.csv")
 #manager.print_numbers
 #manager.print_zipcodes
 #manager.output_data("./event_manager/event_attendees_clean.csv")
-#manager.rep_lookup
-#manager.create_form_letters
+##manager.create_form_letters
 #manager.rank_times
-manager.day_stats
+#manager.day_stats
+manager.state_stats
